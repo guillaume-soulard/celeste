@@ -1,0 +1,64 @@
+= Celeste
+
+== Concept
+
+A stream is an append only linked list of json objects data structure.
+Data can be added manually or via an other stream.
+A stream can only be read sequentially from start or end.
+A stream can store data in memory, on disk.
+
+== Commands
+
+.Stream creation or update
+----
+CREATE STREAM <streamName>
+[STORAGE (IN MEMORY | ON DISK | NO)]
+[
+    FROM <streamName>
+    [FILTER <booleanExpression>]*
+    [MAP <expression>]*
+]
+[EVICTION POLICY (MAX ITEMS <amount> | MAX SIZE <amount> (K|M|G|T)B) | MAX DURATION <amount> (SECONDS | MINUTES | HOURS | DAYS | MONTHS | YEARS)]
+[PARTITION BY (<amount> ITEMS | <amount> (K|M|G|T)B) | <amount> (SECONDS | MINUTES | HOURS | DAYS | MONTHS | YEARS)]
+----
+
+.Delete Stream
+----
+DROP STREAM <name>
+----
+
+Truncate stream
+----
+TRUNCATE STREAM <streamName>
+[
+WITH
+MAX ITEMS <amount> | MAX SIZE <amount> (K|M|G|T)B) | MAX DURATION <amount> (SECONDS | MINUTES | HOURS | DAYS | MONTHS | YEARS)
+]
+----
+
+.Append data to stream
+----
+<stream>[, <stream>...] < <json>[, <json>...]
+----
+
+.Read a stream
+----
+READ <streamName>
+[WITH CONSUMER <consumerName>]
+[START AT (BEGINNING | END)]
+[FILTER <booleanExpression>]
+[MAP <expression>]
+[COUNT <amount>]
+[WAIT FOR NEW ITEMS]
+[WRITE TO STREAMS <name>[, <name>]]
+----
+
+.End read
+----
+STOP READ
+----
+
+.Navigate on stream
+----
+READ (NEXT | PREVIOUS | AGAIN)
+----
