@@ -19,7 +19,7 @@ func Test_stream_creation(t *testing.T) {
 			ErrorExpected: false,
 		},
 		{
-			Command:       `create database TEST`,
+			Command:       `create stream TEST`,
 			ErrorExpected: false,
 		},
 		{

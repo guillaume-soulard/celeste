@@ -50,17 +50,22 @@ func (m *Memory) Read(readBehaviour model.ReadBehaviour, cursor interface{}, cou
 	data = make([]ast.Json, 0, count)
 	node := cursor.(*LinkedListNode[MemoryData])
 	for len(data) < count {
+		data = append(data, node.Data.Data)
+		node = m.getNextNodeFrom(readBehaviour, node)
 		if node == nil {
 			endOfStream = true
 			return newCursor, data, endOfStream, err
 		}
-		data = append(data, node.Data.Data)
-		if readBehaviour == model.ReadBehaviourNext || (readBehaviour == model.ReadBehaviourAgain && m.PreviousReadBehaviour == model.ReadBehaviourNext) {
-			node = node.Next
-		} else if readBehaviour == model.ReadBehaviourPrevious || (readBehaviour == model.ReadBehaviourAgain && m.PreviousReadBehaviour == model.ReadBehaviourPrevious) {
-			node = node.Previous
-		}
 	}
 	m.PreviousReadBehaviour = readBehaviour
 	return newCursor, data, endOfStream, err
+}
+
+func (m *Memory) getNextNodeFrom(readBehaviour model.ReadBehaviour, node *LinkedListNode[MemoryData]) *LinkedListNode[MemoryData] {
+	if readBehaviour == model.ReadBehaviourNext || (readBehaviour == model.ReadBehaviourAgain && m.PreviousReadBehaviour == model.ReadBehaviourNext) {
+		return node.Next
+	} else if readBehaviour == model.ReadBehaviourPrevious || (readBehaviour == model.ReadBehaviourAgain && m.PreviousReadBehaviour == model.ReadBehaviourPrevious) {
+		return node.Previous
+	}
+	return nil
 }
