@@ -12,12 +12,12 @@ type Storage interface {
 	Read(db model.ReadBehaviour, cursor interface{}, count int) (newCursor interface{}, data []ast.Json, endOfStream bool, err error)
 }
 
-func NewStorageFrom(storage *ast.StreamStorage) (s Storage, err error) {
-	if storage.Disk {
-		s = NewFileStorage()
-	} else if storage.Memory {
+func NewStorageFrom(streamCreation ast.StreamCreation) (s Storage, err error) {
+	if streamCreation.Storage.Disk {
+		s, err = NewFileStorage(*streamCreation.Name)
+	} else if streamCreation.Storage.Memory {
 		s = NewMemoryStorage()
-	} else if storage.None {
+	} else if streamCreation.Storage.None {
 		s = NewNoneStorage()
 	} else {
 		err = errors.New("unknown storage")

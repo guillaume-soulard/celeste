@@ -20,7 +20,7 @@ func NewStreamFrom(database *Database, creation ast.StreamCreation) (err error) 
 		return err
 	}
 	var s storage.Storage
-	if s, err = storage.NewStorageFrom(creation.Storage); err != nil {
+	if s, err = storage.NewStorageFrom(creation); err != nil {
 		return err
 	}
 	stream := Stream{
