@@ -18,7 +18,7 @@ func Parse(str string) (parsed *ast.Ast, err error) {
 	basicParser := participle.MustBuild[ast.Ast](
 		participle.Lexer(basicLexer),
 		participle.CaseInsensitive("Ident"),
-		participle.Unquote("String"),
+		participle.Unquote("String", "JsonString"),
 		participle.UseLookahead(2),
 	)
 	parsed, err = basicParser.ParseString("", str)

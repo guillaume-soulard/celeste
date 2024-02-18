@@ -69,3 +69,9 @@ func (m *Memory) getNextNodeFrom(readBehaviour model.ReadBehaviour, node *Linked
 	}
 	return nil
 }
+
+func (m *Memory) Close() (err error) {
+	m.Data.Head = nil
+	m.Data.Tail = nil
+	return err
+}

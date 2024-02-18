@@ -5,6 +5,7 @@ import (
 	"celeste/src/model/ast"
 	"io"
 	"os"
+	"unsafe"
 )
 
 func NewFileStorage(streamName string) (storage Storage, err error) {
@@ -24,8 +25,32 @@ func (f *File) Append(data ast.Json) (id int64, err error) {
 	if id, err = f.file.Seek(0, io.SeekCurrent); err != nil {
 		return id, err
 	}
-	_, err = f.file.WriteString("test")
+	dataStr := data.ToString()
+	strLen := len(dataStr)
+	b := make([]byte, 4+strLen)
+	sizeByte := IntToByteArray(strLen)
+	str := []byte(dataStr)
+	copy(b[0:4], sizeByte)
+	copy(b[4:], str)
+	_, err = f.file.Write(b)
 	return id, err
+}
+
+func IntToByteArray(num int) []byte {
+	size := int(unsafe.Sizeof(num))
+	arr := make([]byte, size)
+	for i := 0; i < size; i++ {
+		byt := *(*uint8)(unsafe.Pointer(uintptr(unsafe.Pointer(&num)) + uintptr(i)))
+		arr[i] = byt
+	}
+	return arr
+}
+
+func (f *File) Close() (err error) {
+	if f.file != nil {
+		err = f.file.Close()
+	}
+	return err
 }
 
 func (f *File) InitCursor(startPosition model.StartPosition) (cursor interface{}, err error) {

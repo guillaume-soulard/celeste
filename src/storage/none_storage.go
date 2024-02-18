@@ -30,3 +30,7 @@ func (n *None) Read(_ model.ReadBehaviour, cursor interface{}, _ int) (newCursor
 	newCursor = cursor
 	return newCursor, data, endOfStream, err
 }
+
+func (n *None) Close() (err error) {
+	return err
+}
