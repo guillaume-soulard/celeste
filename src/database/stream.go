@@ -29,6 +29,15 @@ func NewStreamFrom(database *Database, creation ast.StreamCreation) (err error) 
 		DownStreams: make([]*Stream, 0, 10),
 		Storage:     s,
 	}
+	if creation.StreamDataSource != nil && creation.StreamDataSource.From != nil {
+		if upStream, exists := database.Streams[*creation.StreamDataSource.From]; exists {
+			upStream.DownStreams = append(upStream.DownStreams, &stream)
+			stream.UpStreams = append(stream.UpStreams, upStream)
+		} else {
+			err = errors.New(fmt.Sprintf("datasource stream %s not exists", *creation.StreamDataSource.From))
+			return err
+		}
+	}
 	database.Streams[stream.Name] = &stream
 	return err
 }
