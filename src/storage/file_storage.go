@@ -58,6 +58,7 @@ func ByteArrayToInt(arr []byte) int64 {
 func (f *File) Close() (err error) {
 	if f.file != nil {
 		err = f.file.Close()
+		f.file = nil
 	}
 	return err
 }
