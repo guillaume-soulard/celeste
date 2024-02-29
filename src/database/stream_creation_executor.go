@@ -11,6 +11,6 @@ func (s StreamCreationExecutor) Accept(ast *ast.Ast) bool {
 }
 
 func (s StreamCreationExecutor) Execute(db *Database, ast *ast.Ast) (err error) {
-	err = NewStreamFrom(db, *ast.StreamCreation)
+	err = db.NewStreamFrom(*ast.StreamCreation)
 	return err
 }

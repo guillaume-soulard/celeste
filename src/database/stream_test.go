@@ -11,7 +11,7 @@ func Test_Stream_Append_should_append_data_in_down_streams(t *testing.T) {
 	// GIVEN
 	db := LoadDatabase()
 	upStreamName := "upStream"
-	err := NewStreamFrom(&db, ast.StreamCreation{
+	err := db.NewStreamFrom(ast.StreamCreation{
 		Name: &upStreamName,
 		Storage: &ast.StreamStorage{
 			Memory: true,
@@ -19,7 +19,7 @@ func Test_Stream_Append_should_append_data_in_down_streams(t *testing.T) {
 	})
 	assert.NoError(t, err)
 	downStreamName := "downStream"
-	err = NewStreamFrom(&db, ast.StreamCreation{
+	err = db.NewStreamFrom(ast.StreamCreation{
 		Name: &downStreamName,
 		Storage: &ast.StreamStorage{
 			Memory: true,

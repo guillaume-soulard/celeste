@@ -3,8 +3,6 @@ package database
 import (
 	"celeste/src/model/ast"
 	"celeste/src/storage"
-	"errors"
-	"fmt"
 )
 
 type Stream struct {
@@ -12,34 +10,6 @@ type Stream struct {
 	UpStreams   []*Stream
 	DownStreams []*Stream
 	Storage     storage.Storage
-}
-
-func NewStreamFrom(database *Database, creation ast.StreamCreation) (err error) {
-	if _, streamAlreadyExists := database.Streams[*creation.Name]; streamAlreadyExists {
-		err = errors.New(fmt.Sprintf("stream %s already exists", *creation.Name))
-		return err
-	}
-	var s storage.Storage
-	if s, err = storage.NewStorageFrom(creation); err != nil {
-		return err
-	}
-	stream := Stream{
-		Name:        *creation.Name,
-		UpStreams:   make([]*Stream, 0, 10),
-		DownStreams: make([]*Stream, 0, 10),
-		Storage:     s,
-	}
-	if creation.StreamDataSource != nil && creation.StreamDataSource.From != nil {
-		if upStream, exists := database.Streams[*creation.StreamDataSource.From]; exists {
-			upStream.DownStreams = append(upStream.DownStreams, &stream)
-			stream.UpStreams = append(stream.UpStreams, upStream)
-		} else {
-			err = errors.New(fmt.Sprintf("datasource stream %s not exists", *creation.StreamDataSource.From))
-			return err
-		}
-	}
-	database.Streams[stream.Name] = &stream
-	return err
 }
 
 func (s *Stream) Append(data ast.Json) (id int64, err error) {

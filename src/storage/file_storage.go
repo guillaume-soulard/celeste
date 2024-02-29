@@ -21,17 +21,20 @@ type File struct {
 	file *os.File
 }
 
+const sizeLen = 4
+
 func (f *File) Append(data ast.Json) (id int64, err error) {
 	if id, err = f.file.Seek(0, io.SeekCurrent); err != nil {
 		return id, err
 	}
 	dataStr := data.ToString()
 	strLen := len(dataStr)
-	b := make([]byte, 4+strLen)
+	b := make([]byte, (sizeLen*2)+strLen)
 	sizeByte := IntToByteArray(strLen)
 	str := []byte(dataStr)
-	copy(b[0:4], sizeByte)
-	copy(b[4:], str)
+	copy(b[0:sizeLen], sizeByte)
+	copy(b[sizeLen:len(str)+sizeLen], str)
+	copy(b[sizeLen+len(str):], sizeByte)
 	_, err = f.file.Write(b)
 	return id, err
 }
@@ -90,6 +93,13 @@ func (f *File) Read(readBehaviour model.ReadBehaviour, cursor interface{}, count
 		}
 		byteData := make([]byte, ByteArrayToInt(size))
 		if nbRead, err = f.file.Read(byteData); err != nil {
+			if err == io.EOF {
+				err = nil
+				endOfStream = true
+			}
+			return newCursor, data, endOfStream, err
+		}
+		if _, err = f.file.Read(size); err != nil {
 			if err == io.EOF {
 				err = nil
 				endOfStream = true

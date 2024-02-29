@@ -98,7 +98,7 @@ func Test_FileStorage_InitCursor_should_return_21_on_beginning(t *testing.T) {
 	cursor, err = storage.InitCursor(model.StartPositionEnd)
 	// THEN
 	assert.NoError(t, err)
-	assert.Equal(t, int64(21), cursor)
+	assert.Equal(t, int64(25), cursor)
 }
 
 type jsonPathTest struct {
@@ -170,7 +170,7 @@ func Test_FileStorage_Read(t *testing.T) {
 			nbOfItemsToTest:     10,
 			startPositionToTest: model.StartPositionBeginning,
 			readBehaviourToTest: model.ReadBehaviourNext,
-			cursor:              int64(32),
+			cursor:              int64(40),
 			readCount:           2,
 			expectedJsonPath: []jsonPathTest{
 				{jsonPath: "$.field", expectedValue: float64(3)},
@@ -179,13 +179,13 @@ func Test_FileStorage_Read(t *testing.T) {
 			expectedEndOfStream: false,
 		},
 		{
-			nbOfItemsToTest:     10,
+			nbOfItemsToTest:     3,
 			startPositionToTest: model.StartPositionBeginning,
 			readBehaviourToTest: model.ReadBehaviourNext,
-			cursor:              int64(144),
+			cursor:              int64(40),
 			readCount:           2,
 			expectedJsonPath: []jsonPathTest{
-				{jsonPath: "$.field", expectedValue: float64(10)},
+				{jsonPath: "$.field", expectedValue: float64(3)},
 			},
 			expectedEndOfStream: true,
 		},
