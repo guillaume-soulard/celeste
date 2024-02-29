@@ -79,41 +79,51 @@ func (f *File) Read(readBehaviour model.ReadBehaviour, cursor interface{}, count
 	if _, err = f.file.Seek(cursor.(int64), io.SeekStart); err != nil {
 		return newCursor, data, endOfStream, err
 	}
-	size := make([]byte, 4)
+	sizeBytes := make([]byte, 4)
 	data = make([]ast.Json, 0, count)
 	var nbRead int
 	newCursor = cursor.(int64)
 	for len(data) < count {
-		if _, err = f.file.Read(size); err != nil {
-			if err == io.EOF {
-				err = nil
-				endOfStream = true
-			}
+		if endOfStream, err = readSize(f, &sizeBytes); err != nil || endOfStream {
 			return newCursor, data, endOfStream, err
 		}
-		byteData := make([]byte, ByteArrayToInt(size))
-		if nbRead, err = f.file.Read(byteData); err != nil {
-			if err == io.EOF {
-				err = nil
-				endOfStream = true
-			}
+		size := ByteArrayToInt(sizeBytes)
+		if nbRead, endOfStream, err = readData(f, size, &data); err != nil || endOfStream {
 			return newCursor, data, endOfStream, err
 		}
-		if _, err = f.file.Read(size); err != nil {
-			if err == io.EOF {
-				err = nil
-				endOfStream = true
-			}
+		if endOfStream, err = readSize(f, &sizeBytes); err != nil || endOfStream {
 			return newCursor, data, endOfStream, err
-		}
-		var parsed *ast.Ast
-		if parsed, err = model.Parse(string(byteData)); err != nil {
-			return newCursor, data, endOfStream, err
-		}
-		if parsed.Json != nil {
-			data = append(data, *parsed.Json)
 		}
 		newCursor = newCursor.(int64) + int64(4+nbRead)
 	}
 	return newCursor, data, endOfStream, err
+}
+
+func readData(f *File, size int64, data *[]ast.Json) (nbRead int, endOfStream bool, err error) {
+	byteData := make([]byte, size)
+	if nbRead, err = f.file.Read(byteData); err != nil {
+		if err == io.EOF {
+			err = nil
+			endOfStream = true
+		}
+		return nbRead, endOfStream, err
+	}
+	var parsed *ast.Ast
+	if parsed, err = model.Parse(string(byteData)); err != nil {
+		return nbRead, endOfStream, err
+	}
+	if parsed.Json != nil {
+		*data = append(*data, *parsed.Json)
+	}
+	return nbRead, endOfStream, err
+}
+
+func readSize(f *File, size *[]byte) (endOfStream bool, err error) {
+	if _, err = f.file.Read(*size); err != nil {
+		if err == io.EOF {
+			err = nil
+			endOfStream = true
+		}
+	}
+	return endOfStream, err
 }

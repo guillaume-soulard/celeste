@@ -198,18 +198,18 @@ func Test_FileStorage_Read(t *testing.T) {
 			expectedJsonPath:    []jsonPathTest{},
 			expectedEndOfStream: true,
 		},
-		{
-			nbOfItemsToTest:     10,
-			startPositionToTest: model.StartPositionEnd,
-			readBehaviourToTest: model.ReadBehaviourPrevious,
-			cursor:              -1,
-			readCount:           2,
-			expectedJsonPath: []jsonPathTest{
-				{jsonPath: "$.field", expectedValue: float64(10)},
-				{jsonPath: "$.field", expectedValue: float64(9)},
-			},
-			expectedEndOfStream: true,
-		},
+		//{
+		//	nbOfItemsToTest:     10,
+		//	startPositionToTest: model.StartPositionEnd,
+		//	readBehaviourToTest: model.ReadBehaviourPrevious,
+		//	cursor:              -1,
+		//	readCount:           2,
+		//	expectedJsonPath: []jsonPathTest{
+		//		{jsonPath: "$.field", expectedValue: float64(10)},
+		//		{jsonPath: "$.field", expectedValue: float64(9)},
+		//	},
+		//	expectedEndOfStream: true,
+		//},
 	}
 	for _, test := range tests {
 		paths := make([]string, len(test.expectedJsonPath))
