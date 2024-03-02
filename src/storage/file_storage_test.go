@@ -198,25 +198,25 @@ func Test_FileStorage_Read(t *testing.T) {
 			expectedJsonPath:    []jsonPathTest{},
 			expectedEndOfStream: true,
 		},
-		//{
-		//	nbOfItemsToTest:     10,
-		//	startPositionToTest: model.StartPositionEnd,
-		//	readBehaviourToTest: model.ReadBehaviourPrevious,
-		//	cursor:              -1,
-		//	readCount:           2,
-		//	expectedJsonPath: []jsonPathTest{
-		//		{jsonPath: "$.field", expectedValue: float64(10)},
-		//		{jsonPath: "$.field", expectedValue: float64(9)},
-		//	},
-		//	expectedEndOfStream: true,
-		//},
+		{
+			nbOfItemsToTest:     10,
+			startPositionToTest: model.StartPositionEnd,
+			readBehaviourToTest: model.ReadBehaviourPrevious,
+			cursor:              -1,
+			readCount:           2,
+			expectedJsonPath: []jsonPathTest{
+				{jsonPath: "$.field", expectedValue: float64(10)},
+				{jsonPath: "$.field", expectedValue: float64(9)},
+			},
+			expectedEndOfStream: false,
+		},
 	}
-	for _, test := range tests {
+	for testIndex, test := range tests {
 		paths := make([]string, len(test.expectedJsonPath))
 		for i, path := range test.expectedJsonPath {
 			paths[i] = fmt.Sprintf("%s = %v", path.jsonPath, path.expectedValue)
 		}
-		t.Run(fmt.Sprintf("should return %d items with paths %s", len(test.expectedJsonPath), strings.Join(paths, " and ")), func(t *testing.T) {
+		t.Run(fmt.Sprintf("test index %d : should return %d items with paths %s", testIndex, len(test.expectedJsonPath), strings.Join(paths, " and ")), func(t *testing.T) {
 			// GIVEN
 			var storage Storage
 			var err error

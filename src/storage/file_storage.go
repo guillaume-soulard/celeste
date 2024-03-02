@@ -12,13 +12,15 @@ func NewFileStorage(streamName string) (storage Storage, err error) {
 	var file *os.File
 	file, err = os.OpenFile(streamName, os.O_APPEND|os.O_CREATE|os.O_RDWR, 0644)
 	storage = &File{
-		file: file,
+		file:                  file,
+		PreviousReadBehaviour: model.ReadBehaviourNext,
 	}
 	return storage, err
 }
 
 type File struct {
-	file *os.File
+	file                  *os.File
+	PreviousReadBehaviour model.ReadBehaviour
 }
 
 const sizeLen = 4
@@ -79,24 +81,79 @@ func (f *File) Read(readBehaviour model.ReadBehaviour, cursor interface{}, count
 	if _, err = f.file.Seek(cursor.(int64), io.SeekStart); err != nil {
 		return newCursor, data, endOfStream, err
 	}
-	sizeBytes := make([]byte, 4)
 	data = make([]ast.Json, 0, count)
-	var nbRead int
 	newCursor = cursor.(int64)
-	for len(data) < count {
-		if endOfStream, err = readSize(f, &sizeBytes); err != nil || endOfStream {
-			return newCursor, data, endOfStream, err
+	for !endOfStream && len(data) < count {
+		if readBehaviour == model.ReadBehaviourNext || (readBehaviour == model.ReadBehaviourAgain && f.PreviousReadBehaviour == model.ReadBehaviourNext) {
+			if endOfStream, err = f.readForward(&data, &newCursor); err != nil || endOfStream {
+				return newCursor, data, endOfStream, err
+			}
+		} else if readBehaviour == model.ReadBehaviourPrevious || (readBehaviour == model.ReadBehaviourAgain && f.PreviousReadBehaviour == model.ReadBehaviourPrevious) {
+			if endOfStream, err = f.readBackWard(&data, &newCursor); err != nil {
+				return newCursor, data, endOfStream, err
+			}
 		}
-		size := ByteArrayToInt(sizeBytes)
-		if nbRead, endOfStream, err = readData(f, size, &data); err != nil || endOfStream {
-			return newCursor, data, endOfStream, err
-		}
-		if endOfStream, err = readSize(f, &sizeBytes); err != nil || endOfStream {
-			return newCursor, data, endOfStream, err
-		}
-		newCursor = newCursor.(int64) + int64(4+nbRead)
 	}
+	f.PreviousReadBehaviour = readBehaviour
 	return newCursor, data, endOfStream, err
+}
+
+func (f *File) readBackWard(data *[]ast.Json, newCursor *interface{}) (endOfStream bool, err error) {
+	sizeBytes := make([]byte, 4)
+	if _, endOfStream, err = f.TrySeek(-int64(sizeLen), io.SeekCurrent); err != nil || endOfStream {
+		return endOfStream, err
+	}
+	if endOfStream, err = readSize(f, &sizeBytes); err != nil || endOfStream {
+		return endOfStream, err
+	}
+	size := ByteArrayToInt(sizeBytes)
+	if _, endOfStream, err = f.TrySeek(-(size + sizeLen), io.SeekCurrent); err != nil || endOfStream {
+		return endOfStream, err
+	}
+	if _, endOfStream, err = readData(f, size, data); err != nil {
+		return endOfStream, err
+	}
+	var cursor int64
+	if cursor, endOfStream, err = f.TrySeek(-(size + sizeLen), io.SeekCurrent); err != nil || endOfStream {
+		return endOfStream, err
+	}
+	*newCursor = cursor
+	return endOfStream, err
+}
+
+func (f *File) TrySeek(offset int64, whence int) (cursor int64, endOfStream bool, err error) {
+	var currentCursorPosition int64
+	if currentCursorPosition, err = f.file.Seek(0, io.SeekCurrent); err != nil {
+		return cursor, endOfStream, err
+	}
+	if currentCursorPosition+offset < 0 {
+		endOfStream = true
+		return cursor, endOfStream, err
+	}
+	if cursor, err = f.file.Seek(offset, whence); err != nil {
+		if err == io.EOF {
+			err = nil
+			endOfStream = true
+		}
+	}
+	return cursor, endOfStream, err
+}
+
+func (f *File) readForward(data *[]ast.Json, newCursor *interface{}) (endOfStream bool, err error) {
+	sizeBytes := make([]byte, 4)
+	var nbRead int
+	if endOfStream, err = readSize(f, &sizeBytes); err != nil || endOfStream {
+		return endOfStream, err
+	}
+	size := ByteArrayToInt(sizeBytes)
+	if nbRead, endOfStream, err = readData(f, size, data); err != nil || endOfStream {
+		return endOfStream, err
+	}
+	if endOfStream, err = readSize(f, &sizeBytes); err != nil || endOfStream {
+		return endOfStream, err
+	}
+	*newCursor = (*newCursor).(int64) + int64(4+nbRead)
+	return endOfStream, err
 }
 
 func readData(f *File, size int64, data *[]ast.Json) (nbRead int, endOfStream bool, err error) {
