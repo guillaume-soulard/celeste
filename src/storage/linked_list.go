@@ -21,6 +21,18 @@ func (list *LinkedList[T]) Append(data T) {
 	}
 }
 
+func (list *LinkedList[T]) DeleteNode(node *LinkedListNode[T]) {
+	if node != nil {
+		if node.Previous != nil {
+			node.Previous.Next = node.Next
+		}
+		if node.Next != nil {
+			node.Next.Previous = node.Previous
+		}
+		node = nil
+	}
+}
+
 type LinkedListNode[T any] struct {
 	Next     *LinkedListNode[T]
 	Previous *LinkedListNode[T]

@@ -170,6 +170,28 @@ func Test_MemoryStorage_Read_should_return_2_items_from_end(t *testing.T) {
 	assert.False(t, endOfStream)
 }
 
+var amount2 = 2
+
+func Test_MemoryStorage_Truncate(t *testing.T) {
+	// GIVEN
+	memory := NewMemoryStorage().(*Memory)
+	json1 := stringToJson(`{"field":"1"}`)
+	json2 := stringToJson(`{"field":"2"}`)
+	json3 := stringToJson(`{"field":"3"}`)
+	_, _ = memory.Append(json1)
+	_, _ = memory.Append(json2)
+	_, _ = memory.Append(json3)
+	// WHEN
+	err := memory.Truncate(&[]ast.EvictionPolicy{
+		{
+			MaxAmountItems: &amount2,
+		},
+	})
+	// THEN
+	assert.Equal(t, uint64(2), memory.Len)
+	assert.NoError(t, err)
+}
+
 func stringToJson(str string) ast.Json {
 	parsed, _ := model.Parse(str)
 	return *parsed.Json

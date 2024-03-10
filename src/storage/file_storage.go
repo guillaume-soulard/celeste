@@ -184,3 +184,7 @@ func readSize(f *File, size *[]byte) (endOfStream bool, err error) {
 	}
 	return endOfStream, err
 }
+
+func (f *File) Truncate(_ *[]ast.EvictionPolicy) (err error) {
+	return err
+}

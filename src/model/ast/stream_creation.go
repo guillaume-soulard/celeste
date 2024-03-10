@@ -43,6 +43,30 @@ type Size struct {
 	Unit   *string `@("KB" | "MB" | "GB" | "TB")`
 }
 
+var (
+	SizeKb = "KB"
+	SizeMb = "MB"
+	SizeGb = "GB"
+	SizeTb = "TB"
+)
+
+var sizeMap = map[string]uint64{
+	SizeKb: 1024,
+	SizeMb: 1024 * 1024,
+	SizeGb: 1024 * 1024 * 1024,
+	SizeTb: 1024 * 1024 * 1024 * 1024,
+}
+
+func (s Size) Bytes() uint64 {
+	if s.Amount == nil {
+		return uint64(0)
+	}
+	if s.Unit == nil {
+		return uint64(*s.Amount)
+	}
+	return uint64(*s.Amount) * sizeMap[*s.Unit]
+}
+
 type Duration struct {
 	Amount *int    `@Number`
 	Unit   *string `@("SECOND" | "SECONDS" | "MINUTE" | "MINUTES" | "HOUR" | "HOURS" | "DAY" | "DAYS" | "MONTH" | "MONTHS" | "YEAR" | "YEARS" )`

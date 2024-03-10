@@ -4,10 +4,13 @@ import (
 	"celeste/src/model"
 	"celeste/src/model/ast"
 	"errors"
+	"unsafe"
 )
 
 func NewMemoryStorage() Storage {
 	return &Memory{
+		Len:                   0,
+		Size:                  0,
 		LastId:                0,
 		Data:                  NewLinkedList[MemoryData](),
 		PreviousReadBehaviour: model.ReadBehaviourNext,
@@ -20,6 +23,8 @@ type MemoryData struct {
 }
 
 type Memory struct {
+	Len                   uint64
+	Size                  uint64
 	LastId                int64
 	Data                  LinkedList[MemoryData]
 	PreviousReadBehaviour model.ReadBehaviour
@@ -28,10 +33,13 @@ type Memory struct {
 func (m *Memory) Append(data ast.Json) (id int64, err error) {
 	m.LastId++
 	id = m.LastId
-	m.Data.Append(MemoryData{
+	memoryData := MemoryData{
 		Id:   m.LastId,
 		Data: data,
-	})
+	}
+	m.Data.Append(memoryData)
+	m.Len++
+	m.Size += uint64(unsafe.Sizeof(memoryData))
 	return id, err
 }
 
@@ -73,5 +81,36 @@ func (m *Memory) getNextNodeFrom(readBehaviour model.ReadBehaviour, node *Linked
 func (m *Memory) Close() (err error) {
 	m.Data.Head = nil
 	m.Data.Tail = nil
+	return err
+}
+
+func (m *Memory) Truncate(evictionPolicies *[]ast.EvictionPolicy) (err error) {
+	for _, policy := range *evictionPolicies {
+		if policy.MaxAmountItems != nil && uint64(*policy.MaxAmountItems) < m.Len {
+			maxLen := uint64(*policy.MaxAmountItems)
+			count := uint64(0)
+			nodeToDeleteTo := m.Data.Head
+			for nodeToDeleteTo != nil && count < maxLen {
+				nodeToDeleteTo = nodeToDeleteTo.Next
+				count++
+			}
+			node := m.Data.Tail
+			nodeToDeleteDeleted := false
+			for node != nil && !nodeToDeleteDeleted {
+				if node == nodeToDeleteTo {
+					nodeToDeleteDeleted = true
+				}
+				m.Data.DeleteNode(node)
+				m.Len--
+				node = node.Previous
+			}
+		}
+		if policy.MaxSize != nil && (*policy.MaxSize).Bytes() < m.Size {
+
+		}
+		//if policy.MaxDuration != nil && (*policy.MaxDuration) < m.Len {
+		//
+		//}
+	}
 	return err
 }

@@ -34,3 +34,7 @@ func (n *None) Read(_ model.ReadBehaviour, cursor interface{}, _ int) (newCursor
 func (n *None) Close() (err error) {
 	return err
 }
+
+func (n *None) Truncate(_ *[]ast.EvictionPolicy) (err error) {
+	return err
+}
