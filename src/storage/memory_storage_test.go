@@ -188,7 +188,9 @@ func Test_MemoryStorage_Truncate(t *testing.T) {
 		},
 	})
 	// THEN
-	assert.Equal(t, uint64(2), memory.Len)
+	assert.Equal(t, uint64(2), memory.Data.Len)
+	assert.Equal(t, `{"field": "2"}`, memory.Data.Head.Data.Data.ToString())
+	assert.Equal(t, `{"field": "3"}`, memory.Data.Head.Next.Data.Data.ToString())
 	assert.NoError(t, err)
 }
 

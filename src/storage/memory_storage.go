@@ -4,12 +4,12 @@ import (
 	"celeste/src/model"
 	"celeste/src/model/ast"
 	"errors"
+	"time"
 	"unsafe"
 )
 
 func NewMemoryStorage() Storage {
 	return &Memory{
-		Len:                   0,
 		Size:                  0,
 		LastId:                0,
 		Data:                  NewLinkedList[MemoryData](),
@@ -23,11 +23,11 @@ type MemoryData struct {
 }
 
 type Memory struct {
-	Len                   uint64
 	Size                  uint64
 	LastId                int64
 	Data                  LinkedList[MemoryData]
 	PreviousReadBehaviour model.ReadBehaviour
+	OldestInsertedTime    time.Time
 }
 
 func (m *Memory) Append(data ast.Json) (id int64, err error) {
@@ -38,7 +38,6 @@ func (m *Memory) Append(data ast.Json) (id int64, err error) {
 		Data: data,
 	}
 	m.Data.Append(memoryData)
-	m.Len++
 	m.Size += uint64(unsafe.Sizeof(memoryData))
 	return id, err
 }
@@ -86,31 +85,31 @@ func (m *Memory) Close() (err error) {
 
 func (m *Memory) Truncate(evictionPolicies *[]ast.EvictionPolicy) (err error) {
 	for _, policy := range *evictionPolicies {
-		if policy.MaxAmountItems != nil && uint64(*policy.MaxAmountItems) < m.Len {
+		if policy.MaxAmountItems != nil && uint64(*policy.MaxAmountItems) < m.Data.Len {
 			maxLen := uint64(*policy.MaxAmountItems)
-			count := uint64(0)
-			nodeToDeleteTo := m.Data.Head
-			for nodeToDeleteTo != nil && count < maxLen {
-				nodeToDeleteTo = nodeToDeleteTo.Next
+			count := uint64(1)
+			nodeToDeleteTo := m.Data.Tail
+			for nodeToDeleteTo != nil {
+				nodeToDeleteTo = nodeToDeleteTo.Previous
 				count++
-			}
-			node := m.Data.Tail
-			nodeToDeleteDeleted := false
-			for node != nil && !nodeToDeleteDeleted {
-				if node == nodeToDeleteTo {
-					nodeToDeleteDeleted = true
+				if count <= maxLen {
+					break
 				}
-				m.Data.DeleteNode(node)
-				m.Len--
-				node = node.Previous
+			}
+			if nodeToDeleteTo != nil {
+				nodeToDeleteTo = nodeToDeleteTo.Previous
+			}
+			for nodeToDeleteTo != nil {
+				m.Data.DeleteNode(nodeToDeleteTo)
+				nodeToDeleteTo = nodeToDeleteTo.Previous
 			}
 		}
 		if policy.MaxSize != nil && (*policy.MaxSize).Bytes() < m.Size {
-
+			err = errors.New("unsupported max size truncation for storage memory")
 		}
-		//if policy.MaxDuration != nil && (*policy.MaxDuration) < m.Len {
-		//
-		//}
+		if policy.MaxDuration != nil && time.Now().Sub(m.OldestInsertedTime) > (*policy.MaxDuration).Duration() {
+			err = errors.New("unsupported max duration truncation for storage memory")
+		}
 	}
 	return err
 }

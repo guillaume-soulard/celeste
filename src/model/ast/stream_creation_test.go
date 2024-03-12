@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/stretchr/testify/assert"
 	"testing"
+	"time"
 )
 
 var amount0 = 0
@@ -47,6 +48,37 @@ func Test_Size_Bytes(t *testing.T) {
 			result := test.size.Bytes()
 			// THEN
 			assert.Equal(t, test.expectedBytes, result)
+		})
+	}
+}
+
+func Test_Duration_Duration(t *testing.T) {
+	tests := []struct {
+		duration         Duration
+		expectedDuration time.Duration
+	}{
+		{duration: Duration{Amount: &amount1, Unit: &durationUnitSecond}, expectedDuration: time.Second},
+		{duration: Duration{Amount: &amount3, Unit: &durationUnitSeconds}, expectedDuration: 3 * time.Second},
+		{duration: Duration{Amount: &amount3, Unit: &durationUnitMinute}, expectedDuration: 3 * time.Minute},
+		{duration: Duration{Amount: &amount1, Unit: &durationUnitMinutes}, expectedDuration: time.Minute},
+		{duration: Duration{Amount: &amount1, Unit: &durationUnitHours}, expectedDuration: time.Hour},
+	}
+	for _, test := range tests {
+		amount := "nil"
+		unit := "nil"
+		if test.duration.Amount != nil {
+			amount = fmt.Sprintf("%d", *test.duration.Amount)
+		}
+		if test.duration.Unit != nil {
+			unit = fmt.Sprintf("%s", *test.duration.Unit)
+		}
+		name := fmt.Sprintf("Duration should return %d when Duration is %s %s", test.expectedDuration, amount, unit)
+		t.Run(name, func(t *testing.T) {
+			// GIVEN
+			// WHEN
+			result := test.duration.Duration()
+			// THEN
+			assert.Equal(t, test.expectedDuration, result)
 		})
 	}
 }

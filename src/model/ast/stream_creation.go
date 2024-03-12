@@ -1,5 +1,9 @@
 package ast
 
+import (
+	"time"
+)
+
 type StreamCreation struct {
 	Name             *string           `"CREATE" "STREAM" @Ident`
 	Storage          *StreamStorage    `["STORAGE" @@]`
@@ -70,6 +74,24 @@ func (s Size) Bytes() uint64 {
 type Duration struct {
 	Amount *int    `@Number`
 	Unit   *string `@("SECOND" | "SECONDS" | "MINUTE" | "MINUTES" | "HOUR" | "HOURS" | "DAY" | "DAYS" | "MONTH" | "MONTHS" | "YEAR" | "YEARS" )`
+}
+
+var (
+	durationUnitSecond  = "SECOND"
+	durationUnitSeconds = "SECONDS"
+	durationUnitMinute  = "MINUTE"
+	durationUnitMinutes = "MINUTES"
+	durationUnitHours   = "HOURS"
+)
+
+func (d Duration) Duration() time.Duration {
+	var baseDuration time.Duration
+	if *d.Unit == durationUnitSecond || *d.Unit == durationUnitSeconds {
+		baseDuration = time.Second
+	} else if *d.Unit == durationUnitMinute || *d.Unit == durationUnitMinutes {
+		baseDuration = time.Minute
+	}
+	return baseDuration * time.Duration(*d.Amount)
 }
 
 type Partition struct {

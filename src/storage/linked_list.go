@@ -5,6 +5,7 @@ func NewLinkedList[T any]() LinkedList[T] {
 }
 
 type LinkedList[T any] struct {
+	Len  uint64
 	Head *LinkedListNode[T]
 	Tail *LinkedListNode[T]
 }
@@ -19,6 +20,7 @@ func (list *LinkedList[T]) Append(data T) {
 		list.Tail.Next = &node
 		list.Tail = &node
 	}
+	list.Len++
 }
 
 func (list *LinkedList[T]) DeleteNode(node *LinkedListNode[T]) {
@@ -29,7 +31,14 @@ func (list *LinkedList[T]) DeleteNode(node *LinkedListNode[T]) {
 		if node.Next != nil {
 			node.Next.Previous = node.Previous
 		}
+		if list.Head == node {
+			list.Head = node.Next
+		}
+		if list.Tail == node {
+			list.Tail = node.Previous
+		}
 		node = nil
+		list.Len--
 	}
 }
 
