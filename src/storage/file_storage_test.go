@@ -250,6 +250,32 @@ func Test_FileStorage_Read(t *testing.T) {
 	}
 }
 
+func Test(t *testing.T) {
+	// GIVEN
+	var storage Storage
+	var err error
+	streamName := "logs"
+	cleanFile(t, streamName)
+	defer func() {
+		err = storage.Close()
+		cleanFile(t, streamName)
+	}()
+	storage, err = NewFileStorage(streamName)
+	for i := 1; i <= 10; i++ {
+		_, err = storage.Append(stringToJson(fmt.Sprintf(`{"field":%d}`, i)))
+	}
+	// WHEN
+	err = storage.Truncate(&[]ast.EvictionPolicy{
+		{
+			MaxAmountItems: nil,
+			MaxSize:        nil,
+			MaxDuration:    nil,
+		},
+	})
+	// THEN
+	assert.NoError(t, err)
+}
+
 func cleanFile(t *testing.T, fileName string) {
 	var err error
 	var file *os.File

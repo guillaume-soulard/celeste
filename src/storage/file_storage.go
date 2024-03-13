@@ -3,6 +3,7 @@ package storage
 import (
 	"celeste/src/model"
 	"celeste/src/model/ast"
+	"errors"
 	"io"
 	"os"
 	"unsafe"
@@ -186,5 +187,6 @@ func readSize(f *File, size *[]byte) (endOfStream bool, err error) {
 }
 
 func (f *File) Truncate(_ *[]ast.EvictionPolicy) (err error) {
+	err = errors.New("not implemented")
 	return err
 }
