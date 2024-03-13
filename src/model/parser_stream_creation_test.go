@@ -54,6 +54,54 @@ func Test_stream_creation(t *testing.T) {
 			Command:       `CREATE STREAM test STORAGE IN MEMORY FROM test FILTER 'test' MAP 'test' EVICTION POLICY MAX SIZE 10 MB PARTITION BY 10 MINUTES`,
 			ErrorExpected: false,
 		},
+		{
+			Command:       `CREATE STREAM test EVICTION POLICY MAX DURATION 10 SECONDS`,
+			ErrorExpected: false,
+		},
+		{
+			Command:       `CREATE STREAM test EVICTION POLICY MAX DURATION 10 SECOND`,
+			ErrorExpected: false,
+		},
+		{
+			Command:       `CREATE STREAM test EVICTION POLICY MAX DURATION 10 MINUTE`,
+			ErrorExpected: false,
+		},
+		{
+			Command:       `CREATE STREAM test EVICTION POLICY MAX DURATION 10 MINUTES`,
+			ErrorExpected: false,
+		},
+		{
+			Command:       `CREATE STREAM test EVICTION POLICY MAX DURATION 10 HOUR`,
+			ErrorExpected: false,
+		},
+		{
+			Command:       `CREATE STREAM test EVICTION POLICY MAX DURATION 10 HOURS`,
+			ErrorExpected: false,
+		},
+		{
+			Command:       `CREATE STREAM test EVICTION POLICY MAX DURATION 10 DAY`,
+			ErrorExpected: false,
+		},
+		{
+			Command:       `CREATE STREAM test EVICTION POLICY MAX DURATION 10 DAYS`,
+			ErrorExpected: false,
+		},
+		{
+			Command:       `CREATE STREAM test EVICTION POLICY MAX DURATION 10 MONTH`,
+			ErrorExpected: true,
+		},
+		{
+			Command:       `CREATE STREAM test EVICTION POLICY MAX DURATION 10 MONTHS`,
+			ErrorExpected: true,
+		},
+		{
+			Command:       `CREATE STREAM test EVICTION POLICY MAX DURATION 10 YEAR`,
+			ErrorExpected: true,
+		},
+		{
+			Command:       `CREATE STREAM test EVICTION POLICY MAX DURATION 10 YEARS`,
+			ErrorExpected: true,
+		},
 	}
 	runTest(t, tests)
 }

@@ -3,8 +3,10 @@ package storage
 import (
 	"celeste/src/model"
 	"celeste/src/model/ast"
+	"fmt"
 	"github.com/stretchr/testify/assert"
 	"testing"
+	"time"
 )
 
 func Test_MemoryStorage_Append_should_add_one_item(t *testing.T) {
@@ -171,8 +173,9 @@ func Test_MemoryStorage_Read_should_return_2_items_from_end(t *testing.T) {
 }
 
 var amount2 = 2
+var amount10 = 10
 
-func Test_MemoryStorage_Truncate(t *testing.T) {
+func Test_MemoryStorage_Truncate_by_max_items_2(t *testing.T) {
 	// GIVEN
 	memory := NewMemoryStorage().(*Memory)
 	json1 := stringToJson(`{"field":"1"}`)
@@ -191,6 +194,102 @@ func Test_MemoryStorage_Truncate(t *testing.T) {
 	assert.Equal(t, uint64(2), memory.Data.Len)
 	assert.Equal(t, `{"field": "2"}`, memory.Data.Head.Data.Data.ToString())
 	assert.Equal(t, `{"field": "3"}`, memory.Data.Head.Next.Data.Data.ToString())
+	assert.NoError(t, err)
+}
+
+func Test_MemoryStorage_Truncate_by_max_items_10(t *testing.T) {
+	// GIVEN
+	memory := NewMemoryStorage().(*Memory)
+	json1 := stringToJson(`{"field":"1"}`)
+	json2 := stringToJson(`{"field":"2"}`)
+	json3 := stringToJson(`{"field":"3"}`)
+	_, _ = memory.Append(json1)
+	_, _ = memory.Append(json2)
+	_, _ = memory.Append(json3)
+	// WHEN
+	err := memory.Truncate(&[]ast.EvictionPolicy{
+		{
+			MaxAmountItems: &amount10,
+		},
+	})
+	// THEN
+	assert.Equal(t, uint64(3), memory.Data.Len)
+	assert.Equal(t, `{"field": "1"}`, memory.Data.Head.Data.Data.ToString())
+	assert.Equal(t, `{"field": "2"}`, memory.Data.Head.Next.Data.Data.ToString())
+	assert.Equal(t, `{"field": "3"}`, memory.Data.Head.Next.Next.Data.Data.ToString())
+	assert.NoError(t, err)
+}
+
+func Test_MemoryStorage_Truncate_by_duration_of_2_seconds(t *testing.T) {
+	// GIVEN
+	memory := NewMemoryStorage().(*Memory)
+	json1 := stringToJson(`{"field":"1"}`)
+	json2 := stringToJson(`{"field":"2"}`)
+	json3 := stringToJson(`{"field":"3"}`)
+	now := time.Now()
+	_, _ = memory.AppendWithTime(json1, now.Add(-3*time.Second))
+	_, _ = memory.AppendWithTime(json2, now.Add(-1*time.Second))
+	_, _ = memory.AppendWithTime(json3, now)
+	// WHEN
+	err := memory.Truncate(&[]ast.EvictionPolicy{
+		{
+			MaxDuration: &ast.Duration{
+				Amount: &amount2,
+				Unit:   &ast.DurationUnitSecond,
+			},
+		},
+	})
+	// THEN
+	assert.Equal(t, uint64(2), memory.Data.Len)
+	assert.Equal(t, `{"field": "2"}`, memory.Data.Head.Data.Data.ToString())
+	assert.Equal(t, `{"field": "3"}`, memory.Data.Head.Next.Data.Data.ToString())
+	assert.NoError(t, err)
+}
+
+func Test_MemoryStorage_Truncate_by_duration_of_10_seconds(t *testing.T) {
+	// GIVEN
+	memory := NewMemoryStorage().(*Memory)
+	json1 := stringToJson(`{"field":"1"}`)
+	json2 := stringToJson(`{"field":"2"}`)
+	json3 := stringToJson(`{"field":"3"}`)
+	now := time.Now()
+	_, _ = memory.AppendWithTime(json1, now.Add(-3*time.Second))
+	_, _ = memory.AppendWithTime(json2, now.Add(-1*time.Second))
+	_, _ = memory.AppendWithTime(json3, now)
+	// WHEN
+	err := memory.Truncate(&[]ast.EvictionPolicy{
+		{
+			MaxDuration: &ast.Duration{
+				Amount: &amount10,
+				Unit:   &ast.DurationUnitSecond,
+			},
+		},
+	})
+	// THEN
+	assert.Equal(t, uint64(3), memory.Data.Len)
+	assert.Equal(t, `{"field": "1"}`, memory.Data.Head.Data.Data.ToString())
+	assert.Equal(t, `{"field": "2"}`, memory.Data.Head.Next.Data.Data.ToString())
+	assert.Equal(t, `{"field": "3"}`, memory.Data.Head.Next.Next.Data.Data.ToString())
+	assert.NoError(t, err)
+}
+
+func Test_MemoryStorage_Truncate_by_max_size(t *testing.T) {
+	// GIVEN
+	memory := NewMemoryStorage().(*Memory)
+	for i := 1; i <= 30; i++ {
+		_, _ = memory.Append(stringToJson(fmt.Sprintf(`{"field":"%d"}`, i)))
+	}
+	// WHEN
+	err := memory.Truncate(&[]ast.EvictionPolicy{
+		{
+			MaxSize: &ast.Size{
+				Amount: &amount2,
+				Unit:   &ast.SizeKb,
+			},
+		},
+	})
+	// THEN
+	assert.Equal(t, uint64(25), memory.Data.Len)
 	assert.NoError(t, err)
 }
 

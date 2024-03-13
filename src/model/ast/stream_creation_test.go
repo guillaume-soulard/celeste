@@ -57,11 +57,17 @@ func Test_Duration_Duration(t *testing.T) {
 		duration         Duration
 		expectedDuration time.Duration
 	}{
-		{duration: Duration{Amount: &amount1, Unit: &durationUnitSecond}, expectedDuration: time.Second},
-		{duration: Duration{Amount: &amount3, Unit: &durationUnitSeconds}, expectedDuration: 3 * time.Second},
-		{duration: Duration{Amount: &amount3, Unit: &durationUnitMinute}, expectedDuration: 3 * time.Minute},
-		{duration: Duration{Amount: &amount1, Unit: &durationUnitMinutes}, expectedDuration: time.Minute},
-		{duration: Duration{Amount: &amount1, Unit: &durationUnitHours}, expectedDuration: time.Hour},
+		{duration: Duration{Amount: nil, Unit: nil}, expectedDuration: -time.Second},
+		{duration: Duration{Amount: nil, Unit: &DurationUnitHour}, expectedDuration: -time.Second},
+		{duration: Duration{Amount: &amount3, Unit: nil}, expectedDuration: -time.Second},
+		{duration: Duration{Amount: &amount1, Unit: &DurationUnitSecond}, expectedDuration: time.Second},
+		{duration: Duration{Amount: &amount3, Unit: &DurationUnitSeconds}, expectedDuration: 3 * time.Second},
+		{duration: Duration{Amount: &amount3, Unit: &DurationUnitMinute}, expectedDuration: 3 * time.Minute},
+		{duration: Duration{Amount: &amount1, Unit: &DurationUnitMinutes}, expectedDuration: time.Minute},
+		{duration: Duration{Amount: &amount1, Unit: &DurationUnitHour}, expectedDuration: time.Hour},
+		{duration: Duration{Amount: &amount3, Unit: &DurationUnitHours}, expectedDuration: 3 * time.Hour},
+		{duration: Duration{Amount: &amount1, Unit: &DurationUnitDay}, expectedDuration: time.Hour * 24},
+		{duration: Duration{Amount: &amount3, Unit: &DurationUnitDays}, expectedDuration: 3 * time.Hour * 24},
 	}
 	for _, test := range tests {
 		amount := "nil"

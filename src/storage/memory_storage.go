@@ -19,6 +19,7 @@ func NewMemoryStorage() Storage {
 
 type MemoryData struct {
 	Id   int64
+	Time time.Time
 	Data ast.Json
 }
 
@@ -31,10 +32,16 @@ type Memory struct {
 }
 
 func (m *Memory) Append(data ast.Json) (id int64, err error) {
+	id, err = m.AppendWithTime(data, time.Now())
+	return id, err
+}
+
+func (m *Memory) AppendWithTime(data ast.Json, insertTime time.Time) (id int64, err error) {
 	m.LastId++
 	id = m.LastId
 	memoryData := MemoryData{
 		Id:   m.LastId,
+		Time: insertTime,
 		Data: data,
 	}
 	m.Data.Append(memoryData)
@@ -86,30 +93,58 @@ func (m *Memory) Close() (err error) {
 func (m *Memory) Truncate(evictionPolicies *[]ast.EvictionPolicy) (err error) {
 	for _, policy := range *evictionPolicies {
 		if policy.MaxAmountItems != nil && uint64(*policy.MaxAmountItems) < m.Data.Len {
-			maxLen := uint64(*policy.MaxAmountItems)
-			count := uint64(1)
-			nodeToDeleteTo := m.Data.Tail
-			for nodeToDeleteTo != nil {
-				nodeToDeleteTo = nodeToDeleteTo.Previous
-				count++
-				if count <= maxLen {
-					break
-				}
-			}
-			if nodeToDeleteTo != nil {
-				nodeToDeleteTo = nodeToDeleteTo.Previous
-			}
-			for nodeToDeleteTo != nil {
-				m.Data.DeleteNode(nodeToDeleteTo)
-				nodeToDeleteTo = nodeToDeleteTo.Previous
-			}
+			m.truncateByMaxItems(policy)
 		}
 		if policy.MaxSize != nil && (*policy.MaxSize).Bytes() < m.Size {
-			err = errors.New("unsupported max size truncation for storage memory")
+			m.truncateByMaxSize(policy)
 		}
 		if policy.MaxDuration != nil && time.Now().Sub(m.OldestInsertedTime) > (*policy.MaxDuration).Duration() {
-			err = errors.New("unsupported max duration truncation for storage memory")
+			m.truncateByMaxDuration(policy)
 		}
 	}
 	return err
+}
+
+func (m *Memory) truncateByMaxItems(policy ast.EvictionPolicy) {
+	maxLen := uint64(*policy.MaxAmountItems)
+	count := uint64(1)
+	nodeToDeleteTo := m.Data.Tail
+	for nodeToDeleteTo != nil {
+		nodeToDeleteTo = nodeToDeleteTo.Previous
+		count++
+		if count <= maxLen {
+			break
+		}
+	}
+	if nodeToDeleteTo != nil {
+		nodeToDeleteTo = nodeToDeleteTo.Previous
+	}
+	for nodeToDeleteTo != nil {
+		m.Data.DeleteNode(nodeToDeleteTo)
+		nodeToDeleteTo = nodeToDeleteTo.Previous
+	}
+}
+
+func (m *Memory) truncateByMaxDuration(policy ast.EvictionPolicy) {
+	node := m.Data.Head
+	duration := (*policy.MaxDuration).Duration()
+	if duration >= 0 {
+		for time.Now().Sub(node.Data.Time) > duration {
+			m.Data.DeleteNode(node)
+			node = node.Next
+		}
+	}
+}
+
+func (m *Memory) truncateByMaxSize(policy ast.EvictionPolicy) {
+	node := m.Data.Tail
+	maxSize := (*policy.MaxSize).Bytes()
+	size := uint64(0)
+	for node != nil {
+		size += uint64(unsafe.Sizeof(node.Data))
+		if size >= maxSize {
+			m.Data.DeleteNode(node)
+		}
+		node = node.Previous
+	}
 }

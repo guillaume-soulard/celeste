@@ -1,6 +1,7 @@
 package ast
 
 import (
+	"strings"
 	"time"
 )
 
@@ -73,25 +74,39 @@ func (s Size) Bytes() uint64 {
 
 type Duration struct {
 	Amount *int    `@Number`
-	Unit   *string `@("SECOND" | "SECONDS" | "MINUTE" | "MINUTES" | "HOUR" | "HOURS" | "DAY" | "DAYS" | "MONTH" | "MONTHS" | "YEAR" | "YEARS" )`
+	Unit   *string `@("SECOND" | "SECONDS" | "MINUTE" | "MINUTES" | "HOUR" | "HOURS" | "DAY" | "DAYS" )`
 }
 
 var (
-	durationUnitSecond  = "SECOND"
-	durationUnitSeconds = "SECONDS"
-	durationUnitMinute  = "MINUTE"
-	durationUnitMinutes = "MINUTES"
-	durationUnitHours   = "HOURS"
+	DurationUnitSecond  = "SECOND"
+	DurationUnitSeconds = "SECONDS"
+	DurationUnitMinute  = "MINUTE"
+	DurationUnitMinutes = "MINUTES"
+	DurationUnitHour    = "HOUR"
+	DurationUnitHours   = "HOURS"
+	DurationUnitDay     = "DAY"
+	DurationUnitDays    = "DAYS"
 )
 
+var durationsByName = map[string]time.Duration{
+	strings.ToLower(DurationUnitSecond):  time.Second,
+	strings.ToLower(DurationUnitSeconds): time.Second,
+	strings.ToLower(DurationUnitMinute):  time.Minute,
+	strings.ToLower(DurationUnitMinutes): time.Minute,
+	strings.ToLower(DurationUnitHour):    time.Hour,
+	strings.ToLower(DurationUnitHours):   time.Hour,
+	strings.ToLower(DurationUnitDay):     time.Hour * 24,
+	strings.ToLower(DurationUnitDays):    time.Hour * 24,
+}
+
 func (d Duration) Duration() time.Duration {
-	var baseDuration time.Duration
-	if *d.Unit == durationUnitSecond || *d.Unit == durationUnitSeconds {
-		baseDuration = time.Second
-	} else if *d.Unit == durationUnitMinute || *d.Unit == durationUnitMinutes {
-		baseDuration = time.Minute
+	amount := -1
+	unit := time.Second
+	if d.Amount != nil && d.Unit != nil {
+		amount = *d.Amount
+		unit = durationsByName[strings.ToLower(*d.Unit)]
 	}
-	return baseDuration * time.Duration(*d.Amount)
+	return unit * time.Duration(amount)
 }
 
 type Partition struct {
