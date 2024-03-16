@@ -3,31 +3,70 @@ package storage
 import (
 	"celeste/src/model"
 	"celeste/src/model/ast"
-	"errors"
+	"fmt"
 	"io"
 	"os"
+	"time"
 	"unsafe"
 )
 
 func NewFileStorage(streamName string) (storage Storage, err error) {
-	var file *os.File
-	file, err = os.OpenFile(streamName, os.O_APPEND|os.O_CREATE|os.O_RDWR, 0644)
+	var files []*os.File
+	if files, err = openDatabaseFiles(streamName); err != nil {
+		return storage, err
+	}
 	storage = &File{
-		file:                  file,
+		files:                 files,
+		streamName:            streamName,
 		PreviousReadBehaviour: model.ReadBehaviourNext,
 	}
 	return storage, err
 }
 
+func openDatabaseFiles(streamName string) (files []*os.File, err error) {
+	var streamDir *os.File
+	if _, err = os.Stat(streamName); os.IsNotExist(err) {
+		if err = os.Mkdir(streamName, 0644); err != nil {
+			return files, err
+		}
+	}
+	if streamDir, err = os.OpenFile(streamName, os.O_CREATE, 0644); err != nil {
+		return files, err
+	}
+	var allFiles []os.FileInfo
+	if allFiles, err = streamDir.Readdir(-1); err != nil {
+		return files, err
+	}
+	files = make([]*os.File, 0, 10)
+	for _, f := range allFiles {
+		if !f.IsDir() {
+			var file *os.File
+			if file, err = os.OpenFile(fmt.Sprintf("%s/%s", streamName, f.Name()), os.O_APPEND|os.O_CREATE|os.O_RDWR, 0644); err != nil {
+				return files, err
+			}
+			files = append(files, file)
+		}
+	}
+	return files, err
+}
+
 type File struct {
-	file                  *os.File
+	files                 []*os.File
+	size                  uint64
+	len                   uint64
+	streamName            string
+	oldestInsertedTime    time.Time
 	PreviousReadBehaviour model.ReadBehaviour
 }
 
 const sizeLen = 4
 
 func (f *File) Append(data ast.Json) (id int64, err error) {
-	if id, err = f.file.Seek(0, io.SeekCurrent); err != nil {
+	var file *os.File
+	if file, err = f.GetLastFile(); err != nil {
+		return id, err
+	}
+	if id, err = file.Seek(0, io.SeekCurrent); err != nil {
 		return id, err
 	}
 	dataStr := data.ToString()
@@ -38,8 +77,17 @@ func (f *File) Append(data ast.Json) (id int64, err error) {
 	copy(b[0:sizeLen], sizeByte)
 	copy(b[sizeLen:len(str)+sizeLen], str)
 	copy(b[sizeLen+len(str):], sizeByte)
-	_, err = f.file.Write(b)
+	_, err = file.Write(b)
 	return id, err
+}
+
+func (f *File) GetLastFile() (file *os.File, err error) {
+	if len(f.files) == 0 {
+		file, err = os.OpenFile(fmt.Sprintf("%s/%d.dat", f.streamName, len(f.files)), os.O_APPEND|os.O_CREATE|os.O_RDWR, 0644)
+	} else {
+		file = f.files[len(f.files)-1]
+	}
+	return file, err
 }
 
 func IntToByteArray(num int) []byte {
@@ -62,24 +110,49 @@ func ByteArrayToInt(arr []byte) int64 {
 }
 
 func (f *File) Close() (err error) {
-	if f.file != nil {
-		err = f.file.Close()
-		f.file = nil
+	if f.files != nil {
+		for _, file := range f.files {
+			if err = file.Close(); err != nil {
+				return err
+			}
+			file = nil
+		}
 	}
 	return err
 }
 
+type FileCursor struct {
+	inFileCursor int64
+	fileIndex    int
+}
+
 func (f *File) InitCursor(startPosition model.StartPosition) (cursor interface{}, err error) {
+	var file *os.File
+	if file, err = f.GetLastFile(); err != nil {
+		return cursor, err
+	}
+	var inFileCursor int64
+	var fileIndex int
 	if startPosition == model.StartPositionBeginning {
-		cursor = int64(0)
+		inFileCursor = int64(0)
+		fileIndex = 0
 	} else if startPosition == model.StartPositionEnd {
-		cursor, err = f.file.Seek(0, io.SeekEnd)
+		if inFileCursor, err = file.Seek(0, io.SeekEnd); err != nil {
+			return cursor, err
+		}
+		fileIndex = len(f.files) - 1
+	}
+	cursor = FileCursor{
+		inFileCursor: inFileCursor,
+		fileIndex:    fileIndex,
 	}
 	return cursor, err
 }
 
 func (f *File) Read(readBehaviour model.ReadBehaviour, cursor interface{}, count int) (newCursor interface{}, data []ast.Json, endOfStream bool, err error) {
-	if _, err = f.file.Seek(cursor.(int64), io.SeekStart); err != nil {
+	fc := cursor.(FileCursor)
+	file := f.files[fc.fileIndex]
+	if _, err = file.Seek(cursor.(int64), io.SeekStart); err != nil {
 		return newCursor, data, endOfStream, err
 	}
 	data = make([]ast.Json, 0, count)
@@ -99,67 +172,85 @@ func (f *File) Read(readBehaviour model.ReadBehaviour, cursor interface{}, count
 	return newCursor, data, endOfStream, err
 }
 
-func (f *File) readBackWard(data *[]ast.Json, newCursor *interface{}) (endOfStream bool, err error) {
+func (f *File) readBackWard(data *[]ast.Json, newCursor *interface{}) (endOfFile bool, err error) {
+	fc := (*newCursor).(FileCursor)
+	file := f.files[fc.fileIndex]
 	sizeBytes := make([]byte, 4)
-	if _, endOfStream, err = f.TrySeek(-int64(sizeLen), io.SeekCurrent); err != nil || endOfStream {
-		return endOfStream, err
+	if _, endOfFile, err = f.TrySeek(file, -int64(sizeLen), io.SeekCurrent); err != nil || endOfFile {
+		return endOfFile, err
 	}
-	if endOfStream, err = readSize(f, &sizeBytes); err != nil || endOfStream {
-		return endOfStream, err
+	if endOfFile, err = readSize(file, &sizeBytes); err != nil || endOfFile {
+		return endOfFile, err
 	}
 	size := ByteArrayToInt(sizeBytes)
-	if _, endOfStream, err = f.TrySeek(-(size + sizeLen), io.SeekCurrent); err != nil || endOfStream {
-		return endOfStream, err
+	if _, endOfFile, err = f.TrySeek(file, -(size + sizeLen), io.SeekCurrent); err != nil || endOfFile {
+		return endOfFile, err
 	}
-	if _, endOfStream, err = readData(f, size, data); err != nil {
-		return endOfStream, err
+	if _, endOfFile, err = readData(file, size, data); err != nil {
+		return endOfFile, err
 	}
 	var cursor int64
-	if cursor, endOfStream, err = f.TrySeek(-(size + sizeLen), io.SeekCurrent); err != nil || endOfStream {
-		return endOfStream, err
+	if cursor, endOfFile, err = f.TrySeek(file, -(size + sizeLen), io.SeekCurrent); err != nil || endOfFile {
+		return endOfFile, err
 	}
-	*newCursor = cursor
-	return endOfStream, err
+	fileIndex := fc.fileIndex
+	if endOfFile {
+		fileIndex++
+	}
+	*newCursor = FileCursor{
+		inFileCursor: cursor,
+		fileIndex:    fileIndex,
+	}
+	return endOfFile, err
 }
 
-func (f *File) TrySeek(offset int64, whence int) (cursor int64, endOfStream bool, err error) {
+func (f *File) TrySeek(file *os.File, offset int64, whence int) (cursor int64, endOfFile bool, err error) {
 	var currentCursorPosition int64
-	if currentCursorPosition, err = f.file.Seek(0, io.SeekCurrent); err != nil {
-		return cursor, endOfStream, err
+	if currentCursorPosition, err = file.Seek(0, io.SeekCurrent); err != nil {
+		return cursor, endOfFile, err
 	}
 	if currentCursorPosition+offset < 0 {
-		endOfStream = true
-		return cursor, endOfStream, err
+		endOfFile = true
+		return cursor, endOfFile, err
 	}
-	if cursor, err = f.file.Seek(offset, whence); err != nil {
+	if cursor, err = file.Seek(offset, whence); err != nil {
 		if err == io.EOF {
 			err = nil
-			endOfStream = true
+			endOfFile = true
 		}
 	}
-	return cursor, endOfStream, err
+	return cursor, endOfFile, err
 }
 
-func (f *File) readForward(data *[]ast.Json, newCursor *interface{}) (endOfStream bool, err error) {
+func (f *File) readForward(data *[]ast.Json, newCursor *interface{}) (endOfFile bool, err error) {
+	fc := (*newCursor).(FileCursor)
+	file := f.files[fc.fileIndex]
 	sizeBytes := make([]byte, 4)
 	var nbRead int
-	if endOfStream, err = readSize(f, &sizeBytes); err != nil || endOfStream {
-		return endOfStream, err
+	if endOfFile, err = readSize(file, &sizeBytes); err != nil || endOfFile {
+		return endOfFile, err
 	}
 	size := ByteArrayToInt(sizeBytes)
-	if nbRead, endOfStream, err = readData(f, size, data); err != nil || endOfStream {
-		return endOfStream, err
+	if nbRead, endOfFile, err = readData(file, size, data); err != nil || endOfFile {
+		return endOfFile, err
 	}
-	if endOfStream, err = readSize(f, &sizeBytes); err != nil || endOfStream {
-		return endOfStream, err
+	if endOfFile, err = readSize(file, &sizeBytes); err != nil || endOfFile {
+		return endOfFile, err
 	}
-	*newCursor = (*newCursor).(int64) + int64(4+nbRead)
-	return endOfStream, err
+	fileIndex := fc.fileIndex
+	if endOfFile {
+		fileIndex++
+	}
+	*newCursor = FileCursor{
+		inFileCursor: fc.inFileCursor + int64(4+nbRead),
+		fileIndex:    fileIndex,
+	}
+	return endOfFile, err
 }
 
-func readData(f *File, size int64, data *[]ast.Json) (nbRead int, endOfStream bool, err error) {
+func readData(f *os.File, size int64, data *[]ast.Json) (nbRead int, endOfStream bool, err error) {
 	byteData := make([]byte, size)
-	if nbRead, err = f.file.Read(byteData); err != nil {
+	if nbRead, err = f.Read(byteData); err != nil {
 		if err == io.EOF {
 			err = nil
 			endOfStream = true
@@ -176,8 +267,8 @@ func readData(f *File, size int64, data *[]ast.Json) (nbRead int, endOfStream bo
 	return nbRead, endOfStream, err
 }
 
-func readSize(f *File, size *[]byte) (endOfStream bool, err error) {
-	if _, err = f.file.Read(*size); err != nil {
+func readSize(f *os.File, size *[]byte) (endOfStream bool, err error) {
+	if _, err = f.Read(*size); err != nil {
 		if err == io.EOF {
 			err = nil
 			endOfStream = true
@@ -186,7 +277,35 @@ func readSize(f *File, size *[]byte) (endOfStream bool, err error) {
 	return endOfStream, err
 }
 
-func (f *File) Truncate(_ *[]ast.EvictionPolicy) (err error) {
-	err = errors.New("not implemented")
+func (f *File) Truncate(evictionPolicies *[]ast.EvictionPolicy) (err error) {
+	for _, policy := range *evictionPolicies {
+		if policy.MaxAmountItems != nil && uint64(*policy.MaxAmountItems) < f.len {
+			if err = f.truncateByMaxItems(policy); err != nil {
+				return err
+			}
+		}
+		if policy.MaxSize != nil && (*policy.MaxSize).Bytes() < f.size {
+			if err = f.truncateByMaxSize(policy); err != nil {
+				return err
+			}
+		}
+		if policy.MaxDuration != nil && time.Now().Sub(f.oldestInsertedTime) > (*policy.MaxDuration).Duration() {
+			if err = f.truncateByMaxDuration(policy); err != nil {
+				return err
+			}
+		}
+	}
+	return err
+}
+
+func (f *File) truncateByMaxItems(policy ast.EvictionPolicy) (err error) {
+	return err
+}
+
+func (f *File) truncateByMaxSize(policy ast.EvictionPolicy) (err error) {
+	return err
+}
+
+func (f *File) truncateByMaxDuration(policy ast.EvictionPolicy) (err error) {
 	return err
 }
