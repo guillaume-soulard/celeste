@@ -34,7 +34,7 @@ func Test_FileStorage_Append_should_return_id_0_on_first_item(t *testing.T) {
 		err = storage.Close()
 		cleanFile(t, streamName)
 	}()
-	var id int64
+	var id string
 	// WHEN
 	id, err = storage.Append(stringToJson(`{"field":"2"}`))
 	// THEN
@@ -52,7 +52,7 @@ func Test_FileStorage_Append(t *testing.T) {
 	}()
 	_, err = storage.Append(stringToJson(`{"field":"2"}`))
 	// WHEN
-	var id int64
+	var id string
 	id, err = storage.Append(stringToJson(`{"field":"2"}`))
 	// THEN
 	assert.NoError(t, err)

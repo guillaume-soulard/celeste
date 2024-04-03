@@ -17,7 +17,7 @@ func Test_NoneStorage_Append_when_one_item_is_added(t *testing.T) {
 	id, err := memory.Append(data)
 	// THEN
 	assert.NoError(t, err)
-	assert.Equal(t, int64(1), id)
+	assert.NotEmpty(t, id)
 }
 
 func Test_NoneStorage_Append_when_two_items_is_added(t *testing.T) {
@@ -30,7 +30,7 @@ func Test_NoneStorage_Append_when_two_items_is_added(t *testing.T) {
 	id, err := memory.Append(data)
 	// THEN
 	assert.NoError(t, err)
-	assert.Equal(t, int64(2), id)
+	assert.NotEmpty(t, id)
 }
 
 func Test_NoneStorage_InitCursor_should_return_0_when_StartPositionBeginning(t *testing.T) {

@@ -1,6 +1,16 @@
 package model
 
+import (
+	"fmt"
+	"math"
+)
+
 type ReadBehaviour byte
+
+var (
+	MinId = "0-0"
+	MaxId = fmt.Sprintf("%d-%d", math.MaxInt64, math.MaxInt64)
+)
 
 const (
 	ReadBehaviourAgain    ReadBehaviour = 0

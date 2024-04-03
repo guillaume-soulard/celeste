@@ -61,14 +61,16 @@ type File struct {
 
 const sizeLen = 4
 
-func (f *File) Append(data ast.Json) (id int64, err error) {
+func (f *File) Append(data ast.Json) (id string, err error) {
 	var file *os.File
 	if file, err = f.GetLastFile(); err != nil {
 		return id, err
 	}
-	if id, err = file.Seek(0, io.SeekCurrent); err != nil {
+	var idInt int64
+	if idInt, err = file.Seek(0, io.SeekCurrent); err != nil {
 		return id, err
 	}
+	id = fmt.Sprintf("%d", idInt)
 	dataStr := data.ToString()
 	strLen := len(dataStr)
 	b := make([]byte, (sizeLen*2)+strLen)

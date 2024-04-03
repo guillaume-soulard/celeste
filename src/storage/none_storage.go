@@ -3,19 +3,19 @@ package storage
 import (
 	"celeste/src/model"
 	"celeste/src/model/ast"
+	"time"
 )
 
 func NewNoneStorage() Storage {
-	return &None{LastId: 0}
+	return &None{IdGenerator: NewIdGenerator()}
 }
 
 type None struct {
-	LastId int64
+	IdGenerator IdGenerator
 }
 
-func (n *None) Append(_ ast.Json) (id int64, err error) {
-	n.LastId++
-	id = n.LastId
+func (n *None) Append(_ ast.Json) (id string, err error) {
+	id = n.IdGenerator.NextId(time.Now())
 	return id, err
 }
 

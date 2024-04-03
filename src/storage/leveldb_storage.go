@@ -3,48 +3,34 @@ package storage
 import (
 	"celeste/src/model"
 	"celeste/src/model/ast"
-	"fmt"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/iterator"
 	"github.com/syndtr/goleveldb/leveldb/opt"
 	"github.com/syndtr/goleveldb/leveldb/util"
-	"strconv"
+	"time"
 )
-
-var idKey = []byte("_id")
 
 func NewLevelDbStorage(streamName string) (storage Storage, err error) {
 	var db *leveldb.DB
 	if db, err = leveldb.OpenFile(streamName, nil); err != nil {
 		return storage, err
 	}
-	var idStr []byte
-	if idStr, err = db.Get(idKey, nil); err != nil && err != leveldb.ErrNotFound {
-		return storage, err
-	} else if err == leveldb.ErrNotFound {
-		idStr = []byte("0")
-	}
-	var id int
-	if id, err = strconv.Atoi(string(idStr)); err != nil {
-		return storage, err
-	}
 	storage = &LevelDb{
-		id: uint64(id),
-		db: db,
+		idGenerator: NewIdGenerator(),
+		db:          db,
 	}
 	return storage, err
 }
 
 type LevelDb struct {
-	id uint64
-	db *leveldb.DB
+	idGenerator IdGenerator
+	db          *leveldb.DB
 }
 
-func (f *LevelDb) Append(data ast.Json) (id int64, err error) {
+func (f *LevelDb) Append(data ast.Json) (id string, err error) {
 	batch := leveldb.Batch{}
-	f.id++
-	idToUse := []byte(fmt.Sprintf("%d", f.id))
-	batch.Put(idKey, idToUse)
+	id = f.idGenerator.NextId(time.Now())
+	idToUse := []byte(id)
 	batch.Put(idToUse, []byte(data.ToString()))
 	err = f.db.Write(&batch, &opt.WriteOptions{
 		Sync: true,
@@ -58,8 +44,8 @@ func (f *LevelDb) Close() (err error) {
 }
 
 func (f *LevelDb) InitCursor(startPosition model.StartPosition) (cursor interface{}, err error) {
-	minId := []byte("0")
-	maxId := []byte(fmt.Sprintf("%d", f.id))
+	minId := []byte(model.MinId)
+	maxId := []byte(model.MaxId)
 	it := f.db.NewIterator(&util.Range{
 		Start: minId,
 		Limit: maxId,

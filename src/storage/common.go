@@ -7,7 +7,7 @@ import (
 )
 
 type Storage interface {
-	Append(data ast.Json) (id int64, err error)
+	Append(data ast.Json) (id string, err error)
 	InitCursor(position model.StartPosition) (cursor interface{}, err error)
 	Read(db model.ReadBehaviour, cursor interface{}, count int) (newCursor interface{}, data []ast.Json, endOfStream bool, err error)
 	Close() (err error)

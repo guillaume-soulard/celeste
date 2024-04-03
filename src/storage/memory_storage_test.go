@@ -17,7 +17,7 @@ func Test_MemoryStorage_Append_should_add_one_item(t *testing.T) {
 	id, err := memory.Append(data)
 	// THEN
 	assert.NoError(t, err)
-	assert.Equal(t, int64(1), id)
+	assert.NotEmpty(t, id)
 }
 
 func Test_MemoryStorage_Append_should_add_two_items(t *testing.T) {
@@ -28,7 +28,7 @@ func Test_MemoryStorage_Append_should_add_two_items(t *testing.T) {
 	id, err := memory.Append(stringToJson(`{"field":"value"}`))
 	// THEN
 	assert.NoError(t, err)
-	assert.Equal(t, int64(2), id)
+	assert.NotEmpty(t, id)
 }
 
 func Test_MemoryStorage_Append_should_add_three_items(t *testing.T) {
@@ -43,7 +43,7 @@ func Test_MemoryStorage_Append_should_add_three_items(t *testing.T) {
 	id, err := memory.Append(json3)
 	// THEN
 	assert.NoError(t, err)
-	assert.Equal(t, int64(3), id)
+	assert.NotEmpty(t, id)
 	assert.Equal(t, json1, memory.Data.Head.Data.Data)
 	assert.Equal(t, json2, memory.Data.Head.Next.Data.Data)
 	assert.Equal(t, json3, memory.Data.Head.Next.Next.Data.Data)
@@ -289,7 +289,7 @@ func Test_MemoryStorage_Truncate_by_max_size(t *testing.T) {
 		},
 	})
 	// THEN
-	assert.Equal(t, uint64(25), memory.Data.Len)
+	assert.Equal(t, uint64(23), memory.Data.Len)
 	assert.NoError(t, err)
 }
 

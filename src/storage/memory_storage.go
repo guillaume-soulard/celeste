@@ -11,36 +11,35 @@ import (
 func NewMemoryStorage() Storage {
 	return &Memory{
 		Size:                  0,
-		LastId:                0,
+		idGenerator:           NewIdGenerator(),
 		Data:                  NewLinkedList[MemoryData](),
 		PreviousReadBehaviour: model.ReadBehaviourNext,
 	}
 }
 
 type MemoryData struct {
-	Id   int64
+	Id   string
 	Time time.Time
 	Data ast.Json
 }
 
 type Memory struct {
 	Size                  uint64
-	LastId                int64
+	idGenerator           IdGenerator
 	Data                  LinkedList[MemoryData]
 	PreviousReadBehaviour model.ReadBehaviour
 	OldestInsertedTime    time.Time
 }
 
-func (m *Memory) Append(data ast.Json) (id int64, err error) {
+func (m *Memory) Append(data ast.Json) (id string, err error) {
 	id, err = m.AppendWithTime(data, time.Now())
 	return id, err
 }
 
-func (m *Memory) AppendWithTime(data ast.Json, insertTime time.Time) (id int64, err error) {
-	m.LastId++
-	id = m.LastId
+func (m *Memory) AppendWithTime(data ast.Json, insertTime time.Time) (id string, err error) {
+	id = m.idGenerator.NextId(time.Now())
 	memoryData := MemoryData{
-		Id:   m.LastId,
+		Id:   id,
 		Time: insertTime,
 		Data: data,
 	}
