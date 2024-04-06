@@ -43,27 +43,37 @@ func (f *LevelDb) Close() (err error) {
 	return err
 }
 
+type LevelDbCursor struct {
+	iterator    iterator.Iterator
+	endOfStream bool
+}
+
 func (f *LevelDb) InitCursor(startPosition model.StartPosition) (cursor interface{}, err error) {
 	minId := []byte(model.MinId)
 	maxId := []byte(model.MaxId)
-	it := f.db.NewIterator(&util.Range{
+	c := LevelDbCursor{}
+	c.iterator = f.db.NewIterator(&util.Range{
 		Start: minId,
 		Limit: maxId,
 	}, nil)
 	if startPosition == model.StartPositionBeginning {
-		it.First()
+		c.endOfStream = !c.iterator.First()
 	} else if startPosition == model.StartPositionEnd {
-		it.Last()
+		c.endOfStream = !c.iterator.Last()
 	}
-	cursor = it
+	cursor = c
 	return cursor, err
 }
 
 func (f *LevelDb) Read(readBehaviour model.ReadBehaviour, cursor interface{}, count int) (newCursor interface{}, data []ast.Json, endOfStream bool, err error) {
-	it := cursor.(iterator.Iterator)
+	it := cursor.(LevelDbCursor)
 	data = make([]ast.Json, 0, count)
+	if it.endOfStream {
+		endOfStream = true
+		return newCursor, data, endOfStream, err
+	}
 	for {
-		value := it.Value()
+		value := it.iterator.Value()
 		var parsed *ast.Ast
 		if parsed, err = model.Parse(string(value)); err != nil {
 			return newCursor, data, endOfStream, err
@@ -72,12 +82,12 @@ func (f *LevelDb) Read(readBehaviour model.ReadBehaviour, cursor interface{}, co
 			data = append(data, *parsed.Json)
 		}
 		if readBehaviour == model.ReadBehaviourNext {
-			if !it.Next() {
+			if !it.iterator.Next() {
 				endOfStream = true
 				break
 			}
 		} else if readBehaviour == model.ReadBehaviourPrevious {
-			if !it.Prev() {
+			if !it.iterator.Prev() {
 				endOfStream = true
 				break
 			}

@@ -12,7 +12,7 @@ type Stream struct {
 	Storage     storage.Storage
 }
 
-func (s *Stream) Append(data ast.Json) (id int64, err error) {
+func (s *Stream) Append(data ast.Json) (id string, err error) {
 	if id, err = s.Storage.Append(data); err != nil {
 		return id, err
 	}

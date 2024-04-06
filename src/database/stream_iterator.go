@@ -3,6 +3,7 @@ package database
 import (
 	"celeste/src/model"
 	"celeste/src/model/ast"
+	"errors"
 	"fmt"
 )
 
@@ -13,7 +14,11 @@ type StreamIterator struct {
 	Count         int
 }
 
-func (i *StreamIterator) Read(db *Database, read *ast.StreamRead) (err error) {
+func (i *StreamIterator) Read(read *ast.StreamRead) (err error) {
+	if i.Count < 0 {
+		err = errors.New("negative count")
+		return err
+	}
 	readBehaviour := model.ReadBehaviourAgain
 	if read.ReadDirection != nil && read.ReadDirection.Previous {
 		readBehaviour = model.ReadBehaviourPrevious

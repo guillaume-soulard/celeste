@@ -34,7 +34,7 @@ func Test_Stream_Append_should_append_data_in_down_streams(t *testing.T) {
 	id, err := db.Streams[upStreamName].Append(data)
 	// THEN
 	assert.NoError(t, err)
-	assert.Equal(t, int64(1), id)
+	assert.NotEmpty(t, id)
 	upStreamHead := db.Streams[upStreamName].Storage.(*storage.Memory).Data.Head.Data.Data
 	downStreamHead := db.Streams[downStreamName].Storage.(*storage.Memory).Data.Head.Data.Data
 	assert.Equal(t, upStreamHead, downStreamHead)

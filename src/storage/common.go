@@ -16,7 +16,7 @@ type Storage interface {
 
 func NewStorageFrom(streamCreation ast.StreamCreation) (s Storage, err error) {
 	if streamCreation.Storage == nil || streamCreation.Storage.Disk {
-		s, err = NewFileStorage(*streamCreation.Name)
+		s, err = NewLevelDbStorage(*streamCreation.Name)
 	} else if streamCreation.Storage.Memory {
 		s = NewMemoryStorage()
 	} else if streamCreation.Storage.None {

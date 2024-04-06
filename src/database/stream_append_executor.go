@@ -17,8 +17,8 @@ func (s StreamAppendExecutor) Execute(db *Database, ast *ast.Ast) (err error) {
 			return err
 		}
 	}
-	ids := make([]int64, len(*ast.StreamAppend.JsonData)*len(*ast.StreamAppend.StreamNames))
-	var id int64
+	ids := make([]string, len(*ast.StreamAppend.JsonData)*len(*ast.StreamAppend.StreamNames))
+	var id string
 	index := 0
 	for _, stream := range streams {
 		for _, data := range *ast.StreamAppend.JsonData {

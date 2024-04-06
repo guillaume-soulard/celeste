@@ -20,6 +20,6 @@ func (s StreamReadExecutor) Execute(db *Database, ast *ast.Ast) (err error) {
 	if iterator, err = stream.Iterator(ast.StreamRead); err != nil {
 		return err
 	}
-	err = iterator.Read(db, ast.StreamRead)
+	err = iterator.Read(ast.StreamRead)
 	return err
 }
